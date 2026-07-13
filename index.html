@@ -56,22 +56,21 @@
       const response = await fetch(API_URL);
       const rawData = await response.json();
 
-     allOffers = rawData.map(row => {
-        let arr = Array.isArray(row) ? row : Object.values(row);
-        if (arr.length < 2) return null;
+   allOffers = rawData.map(row => {
+        if (!row) return null;
 
-        // 💡 改用最傳統的陣列索引死對位：A欄=arr[0], B欄=arr[1], C欄=arr[2], D欄=arr[3]
-        let rawStore = arr[0] || "";
-        let rawContent = arr[1] || "";
-        let rawLink = arr[2] || "#";
-        let rawExpiry = arr[3] || "未提供";
+        // 💡 拋棄不穩定的陣列索引，直接用試算表的欄位名稱強行索取，徹底防範洗牌錯位！
+        let rawStore = row["超商名稱"] || row[0] || "";
+        let rawContent = row["優惠內容"] || row[1] || "";
+        let rawLink = row["來源連結"] || row[2] || "#";
+        let rawExpiry = row["截止日期"] || row[3] || "未提供";
 
         let store = String(rawStore).trim();
         let content = String(rawContent).trim();
         let link = String(rawLink).trim();
         let expiryStr = String(rawExpiry).trim();
 
-        // 排除第一列標頭與空內容
+        // 排除標頭與空內容
         if (!content || content === '優惠內容' || content === 'undefined') return null;
         
         // 攔截過濾 1970 髒資料與 ISO 戳記
@@ -85,7 +84,7 @@
           expiry = `${yyyy}-${mm}-${dd} (未找到過期時間，預設3日後過期)`;
         }
 
-        // 💡 超商分類終極判定：如果 A 欄原本就有寫明確超商，前端死板服從，絕不自作聰明！
+        // 💡 超商分類權威判定：如果後台寫明是 7-11、全家或萊爾富，前端死板服從！
         if (store === '7-11' || store === '全家' || store === '萊爾富') {
           // 尊重試算表原始分類，不做任何改動
         } else {
@@ -102,7 +101,7 @@
         }
 
         return [store, content, link, expiry];
-      }).filter(item => item !== null); // 💡 修正核心：確保 filter 完美掛在 map 結束之後！
+      }).filter(item => item !== null);
 
       document.getElementById('loading').classList.add('hidden');
       document.getElementById('offers-container').classList.remove('hidden');
@@ -130,7 +129,7 @@
     }
 
     offers.forEach(item => {
-      if (!item) return; // 防呆機制
+      if (!item) return;
       const storeName = item[0];
       const offerContent = item[1];
       const sourcelink = item[2];
