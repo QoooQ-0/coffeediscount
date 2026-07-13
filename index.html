@@ -56,15 +56,15 @@
       const response = await fetch(API_URL);
       const rawData = await response.json();
 
-      allOffers = rawData.map(row => {
+     allOffers = rawData.map(row => {
         let arr = Array.isArray(row) ? row : Object.values(row);
         if (arr.length < 2) return null;
 
-        // 💡 終極物件 Key 值與陣列雙重備援判定
-        let rawStore = row["超商名稱"] || arr[0] || "";
-        let rawContent = row["優惠內容"] || arr[1] || "";
-        let rawLink = row["來源連結"] || arr[2] || "#";
-        let rawExpiry = row["截止日期"] || arr[3] || "未提供";
+        // 💡 改用最傳統的陣列索引死對位：A欄=arr[0], B欄=arr[1], C欄=arr[2], D欄=arr[3]
+        let rawStore = arr[0] || "";
+        let rawContent = arr[1] || "";
+        let rawLink = arr[2] || "#";
+        let rawExpiry = arr[3] || "未提供";
 
         let store = String(rawStore).trim();
         let content = String(rawContent).trim();
@@ -74,19 +74,18 @@
         // 排除第一列標頭與空內容
         if (!content || content === '優惠內容' || content === 'undefined') return null;
         
-        // 💡 終極 1970 攔截器：如果發現被 GAS 轉成 1970 髒資料，強行拉回今日推算的正確日期！
+        // 攔截過濾 1970 髒資料與 ISO 戳記
         let expiry = expiryStr.includes('T') ? expiryStr.split('T')[0] : expiryStr;
         if (expiry.includes('1970-01-01') || expiryStr.includes('1970')) {
-        // 自動精準抓取今天（2026-07-13）並推算 3 日後作為安全緩衝
-        let today = new Date();
-        let targetDate = new Date(today.getTime() + (3 * 24 * 60 * 60 * 1000));
-        let yyyy = targetDate.getFullYear();
-        let mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-        let dd = String(targetDate.getDate()).padStart(2, '0');
-        expiry = `${yyyy}-${mm}-${dd} (未找到過期時間，預設3日後過期)`;
-      }
+          let today = new Date();
+          let targetDate = new Date(today.getTime() + (3 * 24 * 60 * 60 * 1000));
+          let yyyy = targetDate.getFullYear();
+          let mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+          let dd = String(targetDate.getDate()).padStart(2, '0');
+          expiry = `${yyyy}-${mm}-${dd} (未找到過期時間，預設3日後過期)`;
+        }
 
-// 💡 聽從 PM 驗收邏輯：如果試算表已經寫明是 7-11、全家或萊爾富，前端直接100%尊重！
+        // 💡 超商分類終極判定：如果 A 欄原本就有寫明確超商，前端死板服從，絕不自作聰明！
         if (store === '7-11' || store === '全家' || store === '萊爾富') {
           // 尊重試算表原始分類，不做任何改動
         } else {
