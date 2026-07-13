@@ -48,8 +48,7 @@
   const API_URL = 'https://script.google.com/macros/s/AKfycbwmov4n-RxaFFHhN1RhbY89FYSZmYyFkqVfIQhvCaqfMA-4zQUXgO07wMGFxOVu3607/exec' + '?t=' + new Date().getTime();
   let allOffers = [];
 
-  window.addEventListener('DOMContentUploaded', fetchOffers);
-  // 雙重保險：如果 DOM 監聽沒觸發，確保網頁開啟時一定會執行最新抓取
+  window.addEventListener('DOMContentLoaded', fetchOffers);
   window.onload = fetchOffers;
 
   async function fetchOffers() {
@@ -61,39 +60,36 @@
         let arr = Array.isArray(row) ? row : Object.values(row);
         if (arr.length < 2) return null;
 
-        let store = "";
-        let content = "";
-        let link = "#";
-        let expiry = "未提供";
-
-        // 直接依據試算表物件 Key 值強行索取，徹底防範洗牌錯位
+        // 💡 終極物件 Key 值與陣列雙重備援判定
         let rawStore = row["超商名稱"] || arr[0] || "";
         let rawContent = row["優惠內容"] || arr[1] || "";
         let rawLink = row["來源連結"] || arr[2] || "#";
         let rawExpiry = row["截止日期"] || arr[3] || "未提供";
 
-        store = String(rawStore).trim();
-        content = String(rawContent).trim();
-        link = String(rawLink).trim();
-        
+        let store = String(rawStore).trim();
+        let content = String(rawContent).trim();
+        let link = String(rawLink).trim();
         let expiryStr = String(rawExpiry).trim();
-        expiry = expiryStr.includes('T') ? expiryStr.split('T')[0] : expiryStr;
 
-        if (!content || content === '優惠內容') return null;
+        // 排除第一列標頭與空內容
+        if (!content || content === '優惠內容' || content === 'undefined') return null;
+        
+        // 保留完整日期與中文字備註，只切除 ISO 時間戳記的 T
+        let expiry = expiryStr.includes('T') ? expiryStr.split('T')[0] : expiryStr;
 
         // 自動精準校正超商標籤
         let fullText = store + " " + content;
         let has711 = fullText.includes('7-11') || fullText.includes('711');
         let hasFamily = fullText.includes('全家');
-        let hasHiLife = fullText.includes('萊爾富');
+        let hasHiLife = fullText.includes('萊爾富') || store.includes('萊爾富');
 
         if (hasHiLife) store = '萊爾富';
         else if (has711 && !hasFamily) store = '7-11';
         else if (hasFamily && !has711) store = '全家';
-        else if (!store) store = '超商綜合';
+        else if (!store || store === 'undefined') store = '超商綜合';
 
         return [store, content, link, expiry];
-      }).filter(item => item !== null);
+      }).filter(item => item !== null); // 💡 修正核心：確保 filter 完美掛在 map 結束之後！
 
       document.getElementById('loading').classList.add('hidden');
       document.getElementById('offers-container').classList.remove('hidden');
@@ -113,7 +109,7 @@
     container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
     container.innerHTML = '';
 
-    if (offers.length === 0) {
+    if (!offers || offers.length === 0) {
       noData.classList.remove('hidden');
       return;
     } else {
@@ -121,6 +117,7 @@
     }
 
     offers.forEach(item => {
+      if (!item) return; // 防呆機制
       const storeName = item[0];
       const offerContent = item[1];
       const sourcelink = item[2];
