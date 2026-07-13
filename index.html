@@ -50,60 +50,60 @@
 
     window.addEventListener('DOMContentLoaded', fetchOffers);
 
-    async function fetchOffers() {
-      try {
-        const response = await fetch(API_URL);
-        const rawData = await response.json();
+async function fetchOffers() {
+  try {
+    const response = await fetch(API_URL);
+    const rawData = await response.json();
 
-let arr = Array.isArray(row) ? row : Object.values(row);
-    if (arr.length < 2) return null;
+    allOffers = rawData.map(row => {
+      let arr = Array.isArray(row) ? row : Object.values(row);
+      if (arr.length < 2) return null;
 
-    let store = "";
-    let content = "";
-    let link = "#";
-    let expiry = "未提供";
+      let store = "";
+      let content = "";
+      let link = "#";
+      let expiry = "未提供";
 
-// 💡 終極特徵盲抓：只要開頭是 YYYY-MM-DD，不管後面帶什麼中文字通通無條件放行！
-    arr.forEach(val => {
-      if (!val) return;
-      let str = String(val).trim();
-      
-      if (str.startsWith('http')) {
-        link = str;
-      } else if (str.substring(0, 10).match(/^\d{4}-\d{2}-\d{2}/)) {
-        // 核心突破：只檢查前10個字是不是日期格式，如果是，就把整串字完整保留丟給 expiry！
-        expiry = str.includes('T') ? str.split('T')[0] : str;
-      } else if (str.length > 5 && !str.includes('http') && !str.substring(0, 10).match(/^\d{4}-\d{2}-\d{2}/)) {
-        content = str;
-      }
-    });
+      // 💡 終極特徵盲抓：只檢查前10個字是不是日期格式
+      arr.forEach(val => {
+        if (!val) return;
+        let str = String(val).trim();
+        
+        if (str.startsWith('http')) {
+          link = str;
+        } else if (str.substring(0, 10).match(/^\d{4}-\d{2}-\d{2}/)) {
+          expiry = str.includes('T') ? str.split('T')[0] : str;
+        } else if (str.length > 5 && !str.includes('http') && !str.substring(0, 10).match(/^\d{4}-\d{2}-\d{2}/)) {
+          content = str;
+        }
+      });
 
-    if (!content || content === '優惠內容') return null;
+      if (!content || content === '優惠內容') return null;
 
-    // 自動判定超商標籤
-    let firstColStr = String(arr[0]).trim();
-    let fullText = firstColStr + " " + content;
-    let has711 = fullText.includes('7-11') || fullText.includes('711');
-    let hasFamily = fullText.includes('全家');
-    let hasHiLife = fullText.includes('萊爾富') || firstColStr.includes('萊爾富');
+      // 自動判定超商標籤
+      let firstColStr = String(arr[0]).trim();
+      let fullText = firstColStr + " " + content;
+      let has711 = fullText.includes('7-11') || fullText.includes('711');
+      let hasFamily = fullText.includes('全家');
+      let hasHiLife = fullText.includes('萊爾富') || firstColStr.includes('萊爾富');
 
-    if (hasHiLife) store = '萊爾富';
-    else if (has711 && !hasFamily) store = '7-11';
-    else if (hasFamily && !has711) store = '全家';
-    else store = '超商綜合';
+      if (hasHiLife) store = '萊爾富';
+      else if (has711 && !hasFamily) store = '7-11';
+      else if (hasFamily && !has711) store = '全家';
+      else store = '超商綜合';
 
-    return [store, content, link, expiry];
+      return [store, content, link, expiry];
     }).filter(item => item !== null);
 
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('offers-container').classList.remove('hidden');
 
     renderOffers(allOffers);
-    } catch (error) {
+  } catch (error) {
     console.error('資料抓取失敗:', error);
     document.getElementById('loading').innerHTML = `<p class="text-red-500 font-medium">連線失敗 😳</p>`;
-    }
-    
+  }
+}
     // 渲染一般超商卡片
     function renderOffers(offers) {
       const container = document.getElementById('offers-container');
