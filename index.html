@@ -86,16 +86,21 @@
         expiry = `${yyyy}-${mm}-${dd} (未找到過期時間，預設3日後過期)`;
       }
 
-        // 自動精準校正超商標籤
-        let fullText = store + " " + content;
-        let has711 = fullText.includes('7-11') || fullText.includes('711');
-        let hasFamily = fullText.includes('全家');
-        let hasHiLife = fullText.includes('萊爾富') || store.includes('萊爾富');
+// 💡 聽從 PM 驗收邏輯：如果試算表已經寫明是 7-11、全家或萊爾富，前端直接100%尊重！
+        if (store === '7-11' || store === '全家' || store === '萊爾富') {
+          // 尊重試算表原始分類，不做任何改動
+        } else {
+          // 只有原本是「超商綜合」或空白時，前端才進行關鍵字輔助判定
+          let fullText = store + " " + content;
+          let has711 = fullText.includes('7-11') || fullText.includes('711');
+          let hasFamily = fullText.includes('全家');
+          let hasHiLife = fullText.includes('萊爾富');
 
-        if (hasHiLife) store = '萊爾富';
-        else if (has711 && !hasFamily) store = '7-11';
-        else if (hasFamily && !has711) store = '全家';
-        else if (!store || store === 'undefined') store = '超商綜合';
+          if (hasHiLife) store = '萊爾富';
+          else if (has711 && !hasFamily) store = '7-11';
+          else if (hasFamily && !has711) store = '全家';
+          else store = '超商綜合';
+        }
 
         return [store, content, link, expiry];
       }).filter(item => item !== null); // 💡 修正核心：確保 filter 完美掛在 map 結束之後！
