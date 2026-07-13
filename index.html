@@ -64,16 +64,19 @@ async function fetchOffers() {
       let link = "#";
       let expiry = "未提供";
 
-     // 💡 聽從 PM 建議的終極改法：拋棄盲抓，直接依據 API 回傳的欄位順序直接指定！
-      if (arr.length >= 4) {
-        store = String(arr[0]).trim();
-        content = String(arr[1]).trim();
-        link = String(arr[2]).trim();
-      
-      // D欄就是陣列的第 4 個位置 (arr[3])，管它裡面是日期還是中文備註，一律當純文字貼上去！
-      let rawExpiry = String(arr[3]).trim();
-      expiry = rawExpiry.includes('T') ? rawExpiry.split('T')[0] : rawExpiry;
-      }
+    // 💡 終極物件 Key 值對照法：管他順序怎麼洗牌，直接用欄位名稱去後台強行索取！
+    let rawStore = row["超商名稱"] || row[0] || "";
+    let rawContent = row["優惠內容"] || row[1] || "";
+    let rawLink = row["來源連結"] || row[2] || "#";
+    let rawExpiry = row["截止日期"] || row[3] || "未提供";
+
+    store = String(rawStore).trim();
+    content = String(rawContent).trim();
+    link = String(rawLink).trim();
+    
+    // 如果截止日期裡包含時間戳記的 T，強制切除只留 YYYY-MM-DD，其餘中文字完整保留！
+    let expiryStr = String(rawExpiry).trim();
+    expiry = expiryStr.includes('T') ? expiryStr.split('T')[0] : expiryStr;
 
       if (!content || content === '優惠內容') return null;
 
