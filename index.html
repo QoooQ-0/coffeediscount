@@ -56,22 +56,25 @@
       const response = await fetch(API_URL);
       const rawData = await response.json();
 
-   allOffers = rawData.map(row => {
+  allOffers = rawData.map(row => {
         if (!row) return null;
 
-        // 💡 拋棄不穩定的陣列索引，直接用試算表的欄位名稱強行索取，徹底防範洗牌錯位！
-        let rawStore = row["超商名稱"] || row[0] || "";
-        let rawContent = row["優惠內容"] || row[1] || "";
-        let rawLink = row["來源連結"] || row[2] || "#";
-        let rawExpiry = row["截止日期"] || row[3] || "未提供";
+        // 💡 雙重防禦保險：如果物件 Key 值拿不到，立刻改用物理欄位順序解開物件！
+        let keys = Object.keys(row);
+        let vals = Object.values(row);
+
+        let rawStore = row["超商名稱"] || row["超商"] || vals[0] || "";
+        let rawContent = row["優惠內容"] || row["內容"] || vals[1] || "";
+        let rawLink = row["來源連結"] || row["連結"] || vals[2] || "#";
+        let rawExpiry = row["截止日期"] || row["日期"] || vals[3] || "未提供";
 
         let store = String(rawStore).trim();
         let content = String(rawContent).trim();
         let link = String(rawLink).trim();
         let expiryStr = String(rawExpiry).trim();
 
-        // 排除標頭與空內容
-        if (!content || content === '優惠內容' || content === 'undefined') return null;
+        // 排除標頭與無效空值（防範全部過濾變白紙）
+        if (!content || content === '優惠內容' || content === 'undefined' || content === '') return null;
         
         // 攔截過濾 1970 髒資料與 ISO 戳記
         let expiry = expiryStr.includes('T') ? expiryStr.split('T')[0] : expiryStr;
@@ -84,7 +87,7 @@
           expiry = `${yyyy}-${mm}-${dd} (未找到過期時間，預設3日後過期)`;
         }
 
-        // 💡 超商分類權威判定：如果後台寫明是 7-11、全家或萊爾富，前端死板服從！
+        // 💡 超商分類權威判定：如果原本就有寫明確超商，前端直接尊重！
         if (store === '7-11' || store === '全家' || store === '萊爾富') {
           // 尊重試算表原始分類，不做任何改動
         } else {
