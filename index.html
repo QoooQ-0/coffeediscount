@@ -64,20 +64,29 @@
           let link = "#";
           let expiry = "未提供";
 
-arr.forEach(val => {
-      if (!val) return;
-      let str = String(val).trim();
-      if (str.startsWith('http')) {
-        link = str;
-      } else if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
-        if (expiry === '未提供') {
-          // 💡 核心修正：如果抓到的是怪異的 ISO 時間戳記格式，強行切除只留前10個字 (YYYY-MM-DD)
-          expiry = str.includes('T') ? str.split('T')[0] : str;
-        }
-      } else if (str.length > 5 && !str.includes('2026-')) {
-        content = str;
+// 💡 終極精準對位法：直接依據後台傳回陣列的欄位順序來接，徹底免去字串猜測！
+    if (arr.length >= 4) {
+      store = String(arr[0]).trim();
+      content = String(arr[1]).trim();
+      link = String(arr[2]).trim();
+      
+      // D欄：直接把截止日期當純字串接過來，如果是 ISO 格式則切短
+      let rawExpiry = String(arr[3]).trim();
+      if (rawExpiry.includes('T')) {
+        expiry = rawExpiry.split('T')[0];
+      } else {
+        expiry = rawExpiry;
       }
-    });
+    } else {
+      // 備用防呆舊相容模式
+      arr.forEach(val => {
+        if (!val) return;
+        let str = String(val).trim();
+        if (str.startsWith('http')) link = str;
+        else if (str.match(/^\d{4}-\d{2}-\d{2}/)) expiry = str.includes('T') ? str.split('T')[0] : str;
+        else if (str.length > 5 && !str.includes('2026-')) content = str;
+      });
+    }
 
     if (!content || content === '優惠內容') return null;
 
