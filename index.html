@@ -93,7 +93,7 @@ async function fetchOffers() {
       else store = '超商綜合';
 
       return [store, content, link, expiry];
-    }).filter(item => item !== null);
+       }).filter(item => item !== null);
 
     document.getElementById('loading').classList.add('hidden');
     document.getElementById('offers-container').classList.remove('hidden');
