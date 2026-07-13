@@ -55,11 +55,15 @@
         const response = await fetch(API_URL);
         const rawData = await response.json();
 
-        allOffers = rawData.map(row => {
-          let arr = Array.isArray(row) ? row : Object.values(row);
-          if (arr.length < 2) return null;
-          
-// 💡 回歸最強健的「內容特徵盲抓法」（完美相容所有後台洗牌與排列組合）
+let arr = Array.isArray(row) ? row : Object.values(row);
+    if (arr.length < 2) return null;
+
+    let store = "";
+    let content = "";
+    let link = "#";
+    let expiry = "未提供";
+
+    // 💡 進化版特徵盲抓法：只要開頭是日期格式，管它帶什麼中文字通通都抓！
     arr.forEach(val => {
       if (!val) return;
       let str = String(val).trim();
@@ -67,10 +71,13 @@
       if (str.startsWith('http')) {
         link = str;
       } else if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
-        // 如果包含 ISO 時間戳記的 T，只切出日期，但後面帶有的中文備註會完美保留
+        // 核心突破：如果抓到帶有 ISO 戳記的 T 則切短，如果是我們帶備註的中文日期，則原封不動完美保留！
         expiry = str.includes('T') ? str.split('T')[0] : str;
-      } else if (str.length > 5 && !str.includes('2026-') && !str.includes('過期') && !str.includes('推算')) {
-        content = str;
+      } else if (str.length > 5 && !str.includes('http')) {
+        // 排除掉日期與連結後，長度大於5的就是優惠內容
+        if (!str.match(/^\d{4}-\d{2}-\d{2}/)) {
+          content = str;
+        }
       }
     });
 
