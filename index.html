@@ -45,13 +45,13 @@
   </main>
 
 <script>
-  const API_URL = 'https://script.google.com/macros/s/AKfycbwmov4n-RxaFFHhN1RhbY89FYSZMYyFkqVfIQhvCaqfMA-4zQUXg0O7wMGFxOVu3607/exec'
+  const API_URL = 'https://script.google.com/macros/s/AKfycbwmov4n-RxaFFHhN1RhbY89FYSZmYyFkqVfIQhvCaqfMA-4zQUXgO07wMGFxOVu3607/exec';
   let allOffers = [];
 
   window.addEventListener('DOMContentLoaded', fetchOffers);
   window.onload = fetchOffers;
 
-async function fetchOffers() {
+  async function fetchOffers() {
     try {
       const response = await fetch(API_URL);
       const rawData = await response.json();
@@ -59,7 +59,7 @@ async function fetchOffers() {
       allOffers = rawData.map(row => {
         if (!row) return null;
 
-        // 💡 終極萬能索取法：同時相容物件 Key 值、純陣列、以及隨機洗牌的物理位置
+        // 💡 萬能相容索取法：同時通吃後台物件與純陣列結構
         let vals = Object.values(row);
         
         let rawStore = row["超商名稱"] || row["超商"] || (typeof row[0] === 'string' && row[0].length < 10 ? row[0] : '') || vals.find(v => v === '7-11' || v === '全家' || v === '萊爾富') || vals[0] || "";
@@ -72,7 +72,6 @@ async function fetchOffers() {
         let link = String(rawLink).trim();
         let expiryStr = String(rawExpiry).trim();
 
-        // 如果不小心把標題抓去當超商了，修正它
         if (store.length > 6) store = "超商綜合";
 
         // 排除標頭與空內容
@@ -89,7 +88,7 @@ async function fetchOffers() {
           expiry = `${yyyy}-${mm}-${dd} (未找到過期時間，預設3日後過期)`;
         }
 
-        // 💡 智慧關鍵字強制平反：只要標題或後台有任何一處提到 7-11 或全家，就強制分類，絕不允許它逃去綜合！
+        // 💡 智慧關鍵字強制平反：只要有任何一處提到 7-11 或全家，強制分類，絕不允許它逃去綜合！
         let fullText = store + " " + content;
         let has711 = fullText.includes('7-11') || fullText.includes('711') || fullText.includes('限時小確幸') || fullText.includes('快囤');
         let hasFamily = fullText.includes('全家') && !fullText.includes('7-11') && !fullText.includes('限時小確幸');
@@ -178,5 +177,6 @@ async function fetchOffers() {
       renderOffers(filtered);
     }
   }
+</script>
 </body>
 </html>
