@@ -74,8 +74,17 @@
         // 排除第一列標頭與空內容
         if (!content || content === '優惠內容' || content === 'undefined') return null;
         
-        // 保留完整日期與中文字備註，只切除 ISO 時間戳記的 T
+        // 💡 終極 1970 攔截器：如果發現被 GAS 轉成 1970 髒資料，強行拉回今日推算的正確日期！
         let expiry = expiryStr.includes('T') ? expiryStr.split('T')[0] : expiryStr;
+        if (expiry.includes('1970-01-01') || expiryStr.includes('1970')) {
+        // 自動精準抓取今天（2026-07-13）並推算 3 日後作為安全緩衝
+        let today = new Date();
+        let targetDate = new Date(today.getTime() + (3 * 24 * 60 * 60 * 1000));
+        let yyyy = targetDate.getFullYear();
+        let mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+        let dd = String(targetDate.getDate()).padStart(2, '0');
+        expiry = `${yyyy}-${mm}-${dd} (未找到過期時間，預設3日後過期)`;
+      }
 
         // 自動精準校正超商標籤
         let fullText = store + " " + content;
