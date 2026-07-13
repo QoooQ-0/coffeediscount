@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>超商咖啡折扣情報站</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+    body { font-family: 'Noto Sans TC', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+
+  <!-- 上方大標題 -->
+  <header class="bg-gradient-to-r from-amber-700 to-amber-900 text-white py-8 px-4 text-center shadow-md">
+    <h1 class="text-3xl font-bold tracking-wide">☕ 超商咖啡折扣情報站</h1>
+    <p class="text-amber-100 text-sm mt-2">即時追蹤 7-11、全家、萊爾富最新咖啡優惠</p>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-8">
+    <!-- 篩選按鈕區（新增歷代封存按鈕） -->
+    <div class="flex flex-wrap justify-center gap-2 mb-8" id="filter-buttons">
+      <button onclick="filterOffers('全部')" class="filter-btn active px-5 py-2 rounded-full font-medium text-sm transition-all shadow-sm bg-amber-600 text-white cursor-pointer">全部</button>
+      <button onclick="filterOffers('7-11')" class="filter-btn px-5 py-2 rounded-full font-medium text-sm transition-all shadow-sm bg-white text-slate-600 hover:bg-slate-100 cursor-pointer">7-11</button>
+      <button onclick="filterOffers('全家')" class="filter-btn px-5 py-2 rounded-full font-medium text-sm transition-all shadow-sm bg-white text-slate-600 hover:bg-slate-100 cursor-pointer">全家</button>
+      <button onclick="filterOffers('萊爾富')" class="filter-btn px-5 py-2 rounded-full font-medium text-sm transition-all shadow-sm bg-white text-slate-600 hover:bg-slate-100 cursor-pointer">萊爾富</button>
+      <button onclick="filterOffers('超商綜合')" class="filter-btn px-5 py-2 rounded-full font-medium text-sm transition-all shadow-sm bg-white text-slate-600 hover:bg-slate-100 cursor-pointer">超商綜合</button>
+      <button onclick="renderArchiveView()" class="filter-btn px-5 py-2 rounded-full font-medium text-sm transition-all shadow-sm bg-stone-700 text-stone-100 hover:bg-stone-800 cursor-pointer">📂 查看歷代封存</button>
+    </div>
+
+    <!-- 載入中動畫 -->
+    <div id="loading" class="text-center py-12">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-amber-600 border-t-transparent mb-2"></div>
+      <p class="text-slate-500 text-sm">正在從雲端載入最新折扣...</p>
+    </div>
+
+    <!-- 優惠展示區容器 -->
+    <div id="offers-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
+
+    <!-- 查無資料提示 -->
+    <div id="no-data" class="text-center py-12 hidden">
+      <p class="text-slate-400 text-lg">目前這個類別沒有進行中的優惠喔！</p>
+    </div>
+  </main>
+
+  <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbwmov4n-RxaFFHhN1RhbY89FYSZMYyFkqVfIQhvCaqfMA-4zQUXg0O7wMGFxOVu3607/exec';
+    let allOffers = [];
+
+    window.addEventListener('DOMContentLoaded', fetchOffers);
+
+    async function fetchOffers() {
+      try {
+        const response = await fetch(API_URL);
+        const rawData = await response.json();
+
+        allOffers = rawData.map(row => {
+          let arr = Array.isArray(row) ? row : Object.values(row);
+          if (arr.length < 2) return null;
+
+          let store = "";
+          let content = "";
+          let link = "#";
+          let expiry = "未提供";
+
+          arr.forEach(val => {
+            if (!val) return;
+            let str = String(val).trim();
+            if (str.startsWith('http')) {
+              link = str;
+            } else if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
+              if (expiry === '未提供') expiry = str; // 保留後台傳過來的日期與中文字備註
+            } else if (str.length > 5 && !str.includes('2026-')) {
+              content = str;
+            }
+          });
+
+          if (!content || content === '優惠內容') return null;
+
+          let firstColStr = String(arr[0]).trim();
+          let fullText = (firstColStr + " " + content);
+
+          let has711 = fullText.includes('7-11') || fullText.includes('711');
+          let hasFamily = fullText.includes('全家');
+          let hasHiLife = fullText.includes('萊爾富') || firstColStr.includes('萊爾富');
+
+          if (hasHiLife) {
+            store = '萊爾富';
+          } else if (has711 && !hasFamily) {
+            store = '7-11';
+          } else if (hasFamily && !has711) {
+            store = '全家';
+          } else {
+            store = '超商綜合';
+          }
+
+          return [store, content, link, expiry];
+        }).filter(item => item !== null);
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('offers-container').classList.remove('hidden');
+
+        renderOffers(allOffers);
+      } catch (error) {
+        console.error('資料抓取失敗:', error);
+        document.getElementById('loading').innerHTML = `<p class="text-red-500 font-medium">連線失敗 😢</p>`;
+      }
+    }
+
+    // 渲染一般超商卡片
+    function renderOffers(offers) {
+      const container = document.getElementById('offers-container');
+      const noData = document.getElementById('no-data');
+      
+      // 重置容器為網格樣式
+      container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
+      container.innerHTML = '';
+
+      if (offers.length === 0) {
+        noData.classList.remove('hidden');
+        return;
+      } else {
+        noData.classList.add('hidden');
+      }
+
+      offers.forEach(item => {
+        const storeName = item[0];
+        const offerContent = item[1];
+        const sourceLink = item[2];
+        const expiryDate = item[3];
+
+        let badgeColor = 'bg-purple-500 text-white'; 
+        if (storeName === '7-11') badgeColor = 'bg-orange-500 text-white';
+        if (storeName === '全家') badgeColor = 'bg-blue-500 text-white';
+        if (storeName === '萊爾富') badgeColor = 'bg-red-500 text-white';
+
+        const cardHtml = `
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
+            <div class="p-6">
+              <span class="inline-block text-xs font-bold px-2.5 py-1 rounded-md mb-3 ${badgeColor}">
+                ${storeName}
+              </span>
+              <h3 class="text-lg font-bold text-slate-800 leading-snug mb-2">${offerContent}</h3>
+              <p class="text-xs text-slate-400">截止日期：${expiryDate}</p>
+            </div>
+            <div class="px-6 pb-6 pt-0">
+              <a href="${sourceLink}" target="_blank"
+                 class="block text-center bg-amber-500 hover:bg-amber-600 text-white font-medium text-sm py-2.5 px-4 rounded-xl transition-colors ${sourceLink === '#' ? 'pointer-events-none opacity-50 bg-slate-300' : ''}">
+                ${sourceLink === '#' ? '暫無連結' : '前往搶購 / 查看詳情'}
+              </a>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', cardHtml);
+      });
+    }
+
+    // 按鈕篩選功能
+    function filterOffers(storeName) {
+      const buttons = document.querySelectorAll('#filter-buttons button');
+      buttons.forEach(btn => {
+        if (btn.innerText === storeName) {
+          btn.className = 'filter-btn active px-5 py-2 rounded-full font-medium text-sm transition-all shadow-sm bg-amber-600 text-white cursor-pointer';
+        } else {
+          btn.className = 'filter-btn px-5 py-2 rounded-full font-medium text-sm transition-all shadow-sm bg-white text-slate-600 hover:bg-slate-100 cursor-pointer';
+        }
+      });
+
+      if (storeName === '全部') {
+        renderOffers(allOffers);
+      } else {
+        const filtered = allOffers.filter(item => item[0] === storeName);
+        renderOffers(filtered);
+      }
+    }
+
+    // 📅 📂 第二點核心：歷代封存月份折疊渲染邏輯
+    function renderArchiveView() {
+      const container = document.getElementById('offers-container');
+      const noData = document.getElementById('no-data');
+      noData.classList.add('hidden');
+
+      // 啟用歷代封存按鈕的 Active 視覺樣式
+      const buttons = document.querySelectorAll('#filter-buttons button');
+      buttons.forEach(btn => btn.className = 'filter-btn px-5 py-2 rounded-full font-medium text-sm transition-all shadow-sm bg-white text-slate-600 hover:bg-slate-100 cursor-pointer');
+      buttons[buttons.length - 1].className = 'filter-btn active px-5 py-2 rounded-full font-medium text-sm transition-all shadow-sm bg-stone-800 text-white cursor-pointer';
+
+      // 將網格改為單行列表，方便折疊展示
+      container.className = "flex flex-col gap-4 col-span-full w-full";
+      container.innerHTML = '';
+
+      // 將所有資料依照「截止日期」的前七個字 (YYYY-MM) 進行月份分組
+      const groups = {};
+      allOffers.forEach(item => {
+        const dateStr = item[3] || '';
+        const month = (dateStr.includes('-') && dateStr.length >= 7) ? dateStr.substring(0, 7) : '其他月份';
+        if (!groups[month]) groups[month] = [];
+        groups[month].push(item);
+      });
+
+      const months = Object.keys(groups).sort().reverse();
+      if (months.length === 0) {
+        container.innerHTML = '<p class="text-center text-slate-400 py-12">目前尚無封存資料喔！</p>';
+        return;
+      }
+
+      // 生成可折疊的風琴包 HTML
+      months.forEach(month => {
+        const monthData = groups[month];
+        const monthId = `month-${month.replace('-', '')}`;
+        
+        let listHtml = monthData.map(item => {
+          let badgeColor = 'bg-purple-500 text-white';
+          if (item[0] === '7-11') badgeColor = 'bg-orange-500 text-white';
+          if (item[0] === '全家') badgeColor = 'bg-blue-500 text-white';
+          if (item[0] === '萊爾富') badgeColor = 'bg-red-500 text-white';
+
+          return `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-slate-100 gap-2">
+              <div class="flex items-start sm:items-center gap-2">
+                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeColor} shrink-0">${item[0]}</span>
+                <span class="text-sm font-medium text-slate-700">${item[1]}</span>
+              </div>
+              <div class="flex items-center gap-4 shrink-0 justify-between sm:justify-end">
+                <span class="text-xs text-slate-400">${item[3]}</span>
+                <a href="${item[2]}" target="_blank" class="text-xs text-amber-600 hover:text-amber-700 font-medium ${item[2] === '#' ? 'pointer-events-none opacity-0' : ''}">查看連結 ➔</a>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        const accordionHtml = `
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <button onclick="document.getElementById('${monthId}').classList.toggle('hidden')" 
+                    class="w-full text-left px-6 py-4 bg-slate-50 hover:bg-slate-100 font-bold text-slate-700 flex justify-between items-center transition-colors cursor-pointer select-none">
+              <span class="flex items-center gap-2">📂 ${month.replace('-', '年')}月 <span class="text-xs font-normal text-slate-400">(${monthData.length} 筆紀錄)</span></span>
+              <span class="text-xs text-slate-400">點擊展開 / 折疊 ▼</span>
+            </button>
+            <div id="${monthId}" class="px-6 py-2 hidden flex flex-col bg-white">
+              ${listHtml}
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', accordionHtml);
+      });
+    }
+  </script>
+</body>
+</html>
