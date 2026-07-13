@@ -59,38 +59,36 @@
           let arr = Array.isArray(row) ? row : Object.values(row);
           if (arr.length < 2) return null;
           
-// 💡 終極防錯判定：同時相容「物件格式」與「洗牌後的陣列格式」
-    let rawStore = row["超商名稱"] || row[0] || "";
-    let rawContent = row["優惠內容"] || row[1] || "";
-    let rawLink = row["來源連結"] || row[2] || "#";
-    let rawExpiry = row["截止日期"] || row[3] || "未提供";
+// 💡 回歸最強健的「內容特徵盲抓法」（完美相容所有後台洗牌與排列組合）
+    arr.forEach(val => {
+      if (!val) return;
+      let str = String(val).trim();
+      
+      if (str.startsWith('http')) {
+        link = str;
+      } else if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
+        // 如果包含 ISO 時間戳記的 T，只切出日期，但後面帶有的中文備註會完美保留
+        expiry = str.includes('T') ? str.split('T')[0] : str;
+      } else if (str.length > 5 && !str.includes('2026-') && !str.includes('過期') && !str.includes('推算')) {
+        content = str;
+      }
+    });
 
-    let contentStr = String(rawContent).trim();
-    if (!contentStr || contentStr === '優惠內容') return null;
+    if (!content || content === '優惠內容') return null;
 
-    let storeStr = String(rawStore).trim();
-    let linkStr = String(rawLink).trim();
-    let expiryStr = String(rawExpiry).trim();
-
-    // 處理日期格式防爆
-    let finalExpiry = expiryStr;
-    if (expiryStr.includes('T')) {
-      finalExpiry = expiryStr.split('T')[0];
-    }
-
-    // 依據內容自動校正超商標籤，避免後台欄位順序錯亂
-    let fullText = storeStr + " " + contentStr;
+    // 自動判定超商標籤
+    let firstColStr = String(arr[0]).trim();
+    let fullText = firstColStr + " " + content;
     let has711 = fullText.includes('7-11') || fullText.includes('711');
     let hasFamily = fullText.includes('全家');
-    let hasHiLife = fullText.includes('萊爾富');
+    let hasHiLife = fullText.includes('萊爾富') || firstColStr.includes('萊爾富');
 
-    let finalStore = "超商綜合";
-    if (hasHiLife) finalStore = '萊爾富';
-    else if (has711 && !hasFamily) finalStore = '7-11';
-    else if (hasFamily && !has711) finalStore = '全家';
-    else if (storeStr) finalStore = storeStr; // 若都沒比對到，吃原本後台的字
+    if (hasHiLife) store = '萊爾富';
+    else if (has711 && !hasFamily) store = '7-11';
+    else if (hasFamily && !has711) store = '全家';
+    else store = '超商綜合';
 
-    return [finalStore, contentStr, linkStr, finalExpiry];
+    return [store, content, link, expiry];
         }).filter(item => item !== null);
 
         document.getElementById('loading').classList.add('hidden');
