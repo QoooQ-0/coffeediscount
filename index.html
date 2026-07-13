@@ -51,21 +51,31 @@
   window.addEventListener('DOMContentLoaded', fetchOffers);
   window.onload = fetchOffers;
 
-  async function fetchOffers() {
+async function fetchOffers() {
     try {
       const response = await fetch(API_URL);
       const rawData = await response.json();
 
-  allOffers = rawData.map(row => {
-        if (!row || !Array.isArray(row)) return null;
+      allOffers = rawData.map(row => {
+        if (!row) return null;
 
-        // 💡 終極對位：此時後台吐出來的 row 就是純陣列，0就是A欄，1就是B欄，絕對不會再錯位！
-        let store = String(row[0] || "").trim();
-        let content = String(row[1] || "").trim();
-        let link = String(row[2] || "#").trim();
-        let expiryStr = String(row[3] || "未提供").trim();
+        // 💡 終極萬能索取法：同時相容物件 Key 值、純陣列、以及隨機洗牌的物理位置
+        let vals = Object.values(row);
+        
+        let rawStore = row["超商名稱"] || row["超商"] || (typeof row[0] === 'string' && row[0].length < 10 ? row[0] : '') || vals.find(v => v === '7-11' || v === '全家' || v === '萊爾富') || vals[0] || "";
+        let rawContent = row["優惠內容"] || row["內容"] || (typeof row[1] === 'string' && row[1].length > 10 ? row[1] : '') || vals.find(v => String(v).length > 15) || vals[1] || "";
+        let rawLink = row["來源連結"] || row["連結"] || vals.find(v => String(v).startsWith('http')) || vals[2] || "#";
+        let rawExpiry = row["截止日期"] || row["日期"] || vals.find(v => String(v).includes('限時') || String(v).includes('預設') || String(v).includes('2026')) || vals[3] || "未提供";
 
-        // 排除標頭與無效空值
+        let store = String(rawStore).trim();
+        let content = String(rawContent).trim();
+        let link = String(rawLink).trim();
+        let expiryStr = String(rawExpiry).trim();
+
+        // 如果不小心把標題抓去當超商了，修正它
+        if (store.length > 6) store = "超商綜合";
+
+        // 排除標頭與空內容
         if (!content || content === '優惠內容' || content === 'undefined' || content === '') return null;
         
         // 攔截過濾 1970 髒資料與 ISO 戳記
@@ -79,21 +89,16 @@
           expiry = `${yyyy}-${mm}-${dd} (未找到過期時間，預設3日後過期)`;
         }
 
-        // 💡 超商分類權威判定：因為 row[0] 絕對是正確超商，前端直接無條件服從！
-        if (store === '7-11' || store === '全家' || store === '萊爾富') {
-          // 尊重試算表原始分類，不做任何改動
-        } else {
-          // 只有原本是「超商綜合」或空白時，前端才進行關鍵字輔助判定
-          let fullText = store + " " + content;
-          let has711 = fullText.includes('7-11') || fullText.includes('711');
-          let hasFamily = fullText.includes('全家');
-          let hasHiLife = fullText.includes('萊爾富');
+        // 💡 智慧關鍵字強制平反：只要標題或後台有任何一處提到 7-11 或全家，就強制分類，絕不允許它逃去綜合！
+        let fullText = store + " " + content;
+        let has711 = fullText.includes('7-11') || fullText.includes('711') || fullText.includes('限時小確幸') || fullText.includes('快囤');
+        let hasFamily = fullText.includes('全家') && !fullText.includes('7-11') && !fullText.includes('限時小確幸');
+        let hasHiLife = fullText.includes('萊爾富');
 
-          if (hasHiLife) store = '萊爾富';
-          else if (has711 && !hasFamily) store = '7-11';
-          else if (hasFamily && !has711) store = '全家';
-          else store = '超商綜合';
-        }
+        if (hasHiLife) store = '萊爾富';
+        else if (has711) store = '7-11';
+        else if (hasFamily) store = '全家';
+        else if (!store || store === 'undefined' || store === '超商綜合') store = '超商綜合';
 
         return [store, content, link, expiry];
       }).filter(item => item !== null);
@@ -173,6 +178,5 @@
       renderOffers(filtered);
     }
   }
-</script>
 </body>
 </html>
