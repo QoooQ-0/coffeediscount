@@ -64,28 +64,22 @@
           let link = "#";
           let expiry = "未提供";
 
-// 💡 終極精準對位法：直接依據後台傳回陣列的欄位順序來接，徹底免去字串猜測！
-    if (arr.length >= 4) {
-      store = String(arr[0]).trim();
-      content = String(arr[1]).trim();
-      link = String(arr[2]).trim();
-      
-      // D欄：直接把截止日期當純字串接過來，如果是 ISO 格式則切短
-      let rawExpiry = String(arr[3]).trim();
-      if (rawExpiry.includes('T')) {
-        expiry = rawExpiry.split('T')[0];
-      } else {
-        expiry = rawExpiry;
-      }
+// 💡 究極無敵防錯對位法：直接用試算表的「欄位名稱」強行指定撈取！
+    let rawStore = row["超商名稱"] || row[0] || "";
+    let rawContent = row["優惠內容"] || row[1] || "";
+    let rawLink = row["來源連結"] || row[2] || "#";
+    let rawExpiry = row["截止日期"] || row[3] || "未提供";
+
+    store = String(rawStore).trim();
+    content = String(rawContent).trim();
+    link = String(rawLink).trim();
+    
+    // 如果截止日期裡包含時間戳記的 T，強制切除只留前 10 個字 (YYYY-MM-DD)，其餘中文字完整保留！
+    let expiryStr = String(rawExpiry).trim();
+    if (expiryStr.includes('T')) {
+      expiry = expiryStr.split('T')[0];
     } else {
-      // 備用防呆舊相容模式
-      arr.forEach(val => {
-        if (!val) return;
-        let str = String(val).trim();
-        if (str.startsWith('http')) link = str;
-        else if (str.match(/^\d{4}-\d{2}-\d{2}/)) expiry = str.includes('T') ? str.split('T')[0] : str;
-        else if (str.length > 5 && !str.includes('2026-')) content = str;
-      });
+      expiry = expiryStr;
     }
 
     if (!content || content === '優惠內容') return null;
