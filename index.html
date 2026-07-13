@@ -58,50 +58,39 @@
         allOffers = rawData.map(row => {
           let arr = Array.isArray(row) ? row : Object.values(row);
           if (arr.length < 2) return null;
-
-          let store = "";
-          let content = "";
-          let link = "#";
-          let expiry = "未提供";
-
-// 💡 究極無敵防錯對位法：直接用試算表的「欄位名稱」強行指定撈取！
+          
+// 💡 終極防錯判定：同時相容「物件格式」與「洗牌後的陣列格式」
     let rawStore = row["超商名稱"] || row[0] || "";
     let rawContent = row["優惠內容"] || row[1] || "";
     let rawLink = row["來源連結"] || row[2] || "#";
     let rawExpiry = row["截止日期"] || row[3] || "未提供";
 
-    store = String(rawStore).trim();
-    content = String(rawContent).trim();
-    link = String(rawLink).trim();
-    
-    // 如果截止日期裡包含時間戳記的 T，強制切除只留前 10 個字 (YYYY-MM-DD)，其餘中文字完整保留！
+    let contentStr = String(rawContent).trim();
+    if (!contentStr || contentStr === '優惠內容') return null;
+
+    let storeStr = String(rawStore).trim();
+    let linkStr = String(rawLink).trim();
     let expiryStr = String(rawExpiry).trim();
+
+    // 處理日期格式防爆
+    let finalExpiry = expiryStr;
     if (expiryStr.includes('T')) {
-      expiry = expiryStr.split('T')[0];
-    } else {
-      expiry = expiryStr;
+      finalExpiry = expiryStr.split('T')[0];
     }
 
-    if (!content || content === '優惠內容') return null;
-
-    let firstColStr = String(arr[0]).trim();
-    let fullText = (firstColStr + " " + content);
-
+    // 依據內容自動校正超商標籤，避免後台欄位順序錯亂
+    let fullText = storeStr + " " + contentStr;
     let has711 = fullText.includes('7-11') || fullText.includes('711');
     let hasFamily = fullText.includes('全家');
-    let hasHiLife = fullText.includes('萊爾富') || firstColStr.includes('萊爾富');
+    let hasHiLife = fullText.includes('萊爾富');
 
-          if (hasHiLife) {
-            store = '萊爾富';
-          } else if (has711 && !hasFamily) {
-            store = '7-11';
-          } else if (hasFamily && !has711) {
-            store = '全家';
-          } else {
-            store = '超商綜合';
-          }
+    let finalStore = "超商綜合";
+    if (hasHiLife) finalStore = '萊爾富';
+    else if (has711 && !hasFamily) finalStore = '7-11';
+    else if (hasFamily && !has711) finalStore = '全家';
+    else if (storeStr) finalStore = storeStr; // 若都沒比對到，吃原本後台的字
 
-          return [store, content, link, expiry];
+    return [finalStore, contentStr, linkStr, finalExpiry];
         }).filter(item => item !== null);
 
         document.getElementById('loading').classList.add('hidden');
