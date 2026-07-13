@@ -93,18 +93,17 @@ let arr = Array.isArray(row) ? row : Object.values(row);
     else store = '超商綜合';
 
     return [store, content, link, expiry];
-        }).filter(item => item !== null);
+}).filter(item => item !== null);
 
-        document.getElementById('loading').classList.add('hidden');
-        document.getElementById('offers-container').classList.remove('hidden');
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('offers-container').classList.remove('hidden');
 
-        renderOffers(allOffers);
-      } catch (error) {
-        console.error('資料抓取失敗:', error);
-        document.getElementById('loading').innerHTML = `<p class="text-red-500 font-medium">連線失敗 😢</p>`;
-      }
-    }
-
+    renderOffers(allOffers);
+  } catch (error) {
+    console.error('資料抓取失敗:', error);
+    document.getElementById('loading').innerHTML = `<p class="text-red-500 font-medium">連線失敗 😳</p>`;
+  }
+}
     // 渲染一般超商卡片
     function renderOffers(offers) {
       const container = document.getElementById('offers-container');
