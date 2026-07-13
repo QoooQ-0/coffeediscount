@@ -64,26 +64,29 @@
           let link = "#";
           let expiry = "未提供";
 
-          arr.forEach(val => {
-            if (!val) return;
-            let str = String(val).trim();
-            if (str.startsWith('http')) {
-              link = str;
-            } else if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
-              if (expiry === '未提供') expiry = str; // 保留後台傳過來的日期與中文字備註
-            } else if (str.length > 5 && !str.includes('2026-')) {
-              content = str;
-            }
-          });
+arr.forEach(val => {
+      if (!val) return;
+      let str = String(val).trim();
+      if (str.startsWith('http')) {
+        link = str;
+      } else if (str.match(/^\d{4}-\d{2}-\d{2}/)) {
+        if (expiry === '未提供') {
+          // 💡 核心修正：如果抓到的是怪異的 ISO 時間戳記格式，強行切除只留前10個字 (YYYY-MM-DD)
+          expiry = str.includes('T') ? str.split('T')[0] : str;
+        }
+      } else if (str.length > 5 && !str.includes('2026-')) {
+        content = str;
+      }
+    });
 
-          if (!content || content === '優惠內容') return null;
+    if (!content || content === '優惠內容') return null;
 
-          let firstColStr = String(arr[0]).trim();
-          let fullText = (firstColStr + " " + content);
+    let firstColStr = String(arr[0]).trim();
+    let fullText = (firstColStr + " " + content);
 
-          let has711 = fullText.includes('7-11') || fullText.includes('711');
-          let hasFamily = fullText.includes('全家');
-          let hasHiLife = fullText.includes('萊爾富') || firstColStr.includes('萊爾富');
+    let has711 = fullText.includes('7-11') || fullText.includes('711');
+    let hasFamily = fullText.includes('全家');
+    let hasHiLife = fullText.includes('萊爾富') || firstColStr.includes('萊爾富');
 
           if (hasHiLife) {
             store = '萊爾富';
